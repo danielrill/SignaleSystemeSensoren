@@ -1,3 +1,4 @@
+import numpy as np
 from numpy.lib.scimath import sqrt
 from pylab import *
 import matplotlib.pyplot as plt
@@ -129,28 +130,46 @@ werte_y = regressionsdaten[:, 1]
 logaWerteAusgang = np.log(werte_x)  # Abstand
 logaWerteEingang = np.log(werte_y)  # Spannung Volt
 
-model = np.polyfit(logaWerteEingang, logaWerteAusgang, 1)
-generator = np.poly1d(model)
+#model = np.polyfit(logaWerteEingang, logaWerteAusgang, 1)
+#generator = np.poly1d(model)
+#yp = [generator(x) for x in logaWerteEingang]
 
-yp = [generator(x) for x in logaWerteEingang]
+distanz_mean = np.mean(logaWerteAusgang)
+spannung_mean = np.mean(logaWerteEingang)
 
+a1 = 0
+a2 = 0
+
+for i in range(len(logaWerteEingang)):
+    a1 += (logaWerteEingang[i] - spannung_mean) * (logaWerteAusgang[i] - distanz_mean)
+    a2 += pow((logaWerteEingang[i] - spannung_mean), 2)
+
+a = a1 / a2
+b = distanz_mean - a * spannung_mean
 
 fig, ax = plt.subplots(2)
 
-ax[0].plot(logaWerteEingang, logaWerteAusgang, 'o')
-ax[0].plot(logaWerteEingang, yp)
+parametera = [a * x + b for x in logaWerteEingang]
+
+
+print(np.array(a1).shape)
+print(np.array(parametera).shape)
+
+ax[0].plot(parametera, logaWerteEingang)
+#ax[0].plot(logaWerteEingang, yp)
+
 ax[0].grid(True)
 ax[0].set_xlabel(' LOG Abstand in cm')
 ax[0].set_ylabel(' LOG Spannung in V')
 ax[0].set_title('Regressionsgerade')
 
 
-ax[1].plot(np.exp(logaWerteEingang), np.exp(logaWerteAusgang), 'o')
-ax[1].plot(np.exp(logaWerteEingang), np.exp(yp))
+ax[1].plot(werte_x, werte_y, 'o')
+ax[1].plot(werte_x, werte_y)
 ax[1].grid(True)
 ax[1].set_xlabel(' LOG Abstand in cm')
 ax[1].set_ylabel(' LOG Spannung in V')
-ax[1].set_title('Kennlinie Logarithmiert')
+ax[1].set_title('Kennlinie')
 show()
 
 
@@ -165,8 +184,8 @@ Fehlerfortpflanzung durch die Kennlinie e^b x^a berechnen
 Schätzen Sie den Messfehler nach der Methode aus der Vorlesung
 """
 
-# dina4Breite = 21cm
-# dina4Löänge = 29,7
+abstandBreit = 21
+abstandLang = 29.7
 dina4_länge_mean = np.mean(dina4_länge)
 dina4_breite_mean = np.mean(dina4_breite)
 
@@ -246,15 +265,47 @@ ableitungen_breite_mean = np.mean(liste_ableitungen_breite)
 
 # Fehlerfortpflanzung
 
-deltaXLL = []
-#deltaXLL.append([x for x in liste_ableitungen_länge[x] * dina4_länge[x]])
-# for i in dina4_länge:
-#    deltaXLL.append(sqrt((dina4_länge[i] * liste_ableitungen_länge[i])))
 
-plt.plot(deltaXLL)
-plt.show()
+# y = e^b * x hoch a
+# y = Abstand
+# x = Spannung
+"""
+nach x = e^b * a * x hoch a - 1
+nach a = e^b * x hoch a * log (x)
+nach b = e^b * x hoch a
+delta xb = std(spannung)
+delta yb = ableitung(e^b * x hoch a) * delta xb
+"""
 
-print("Fehlerfortpflanzung Länge:")
 
 
-print("Fehlerfortpflanzung Breite:")
+länge1 = 0
+länge2 = 0
+
+for i in range(len(logaWerteEingang)):
+    länge1 += (logaWerteEingang[i] - spannung_mean) * (logaWerteAusgang[i] - distanz_mean)
+    länge2 += pow((logaWerteEingang[i] - spannung_mean), 2)
+
+länge = länge1 / länge2
+offset = distanz_mean - länge * spannung_mean
+
+
+def ableitung(vari):
+    return länge * pow(e, offset) * pow(vari, länge - 1)
+def kennlinie(varSpan):
+    return pow(e, offset) * pow(varSpan, länge)
+
+
+deltaXB = dina4_emp_stdB
+deltaXL = dina4_emp_std
+deltaYL = ableitung(dina4_länge_mean) * deltaXL
+deltaYB = ableitung(dina4_breite_mean) * deltaXB
+input1 = kennlinie(dina4_länge_mean)
+input2 = kennlinie(dina4_breite_mean)
+flaecheV = input1 * input2
+flaecheDeltaV = sqrt(pow(input1 * deltaYL, 2) + pow(input1 * deltaYB, 2))
+print(np.array(input2).shape)
+print("Fläche: x = %f +- %f [cm^2]" % (flaecheV, flaecheDeltaV))
+test222 = 21 * 29.7
+print("Fläche 21 * 29,7: " + str(test222))
+
